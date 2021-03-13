@@ -1,0 +1,106 @@
+###############################################################################
+# MD simulation for revPBE0-D3 H2O with NN potential
+###############################################################################
+
+###############################################################################
+# VARIABLES
+###############################################################################
+clear
+variable dt              equal  0.00025                                                   # timestep (ps)
+variable intThermo       equal  10                                                       # screen output interval (timesteps)
+variable numSteps        equal  200000                                                    # total number of simulation timesteps (timesteps)
+variable runnerCutoff    equal  6.3501269880                                            # largest symmetry function cutoff (Angstrom)
+variable mass2           equal  15.9994                                                 # mass for element 1 (O)  (g/mol)
+variable mass1           equal  1.0080                                                  # mass for element 2 (H) (g/mol)
+variable nameStartCfg    string "PREFIX.data"                				# name of the starting configuration file
+variable runnerDir       string "./nnp/"	                        # directory containing RuNNer files
+
+# set initial velocity distribution
+variable initTemp        equal  TEMPERATURE                                                   # initial temperature (K)
+variable velSeed         equal  498459                                                 # seed for random number generator
+# NVT integrator (Nose-Hoover)
+variable startTemp       equal  TEMPERATURE                                                   # starting temperature for thermostat (K)
+variable stopTemp        equal  TEMPERATURE                                                   # final temperature for thermostat (K)
+variable tDamp           equal  0.02                                                    # thermostat damping factor (ps)
+# NPT integrator (Nose-Hoover)
+variable startPress       equal  10000*PRESSURE                                                  # starting pressure for barostat (bar)
+variable stopPress        equal  10000*PRESSURE                                                   # final pressure for barostat (bar)
+variable pDamp           equal  0.2                                                    # thermostat damping factor (ps)
+###############################################################################
+# SETUP
+###############################################################################
+units metal                                                                             # define unit system (metal = Angstrom, eV, ps, g/mol)
+boundary p p p                                                                          # set periodic boundary conditions
+atom_style atomic
+#box tilt large                                                                       # set atomic style for particles
+read_data ${nameStartCfg}                                                               # read start configuration
+#change_box all triclinic
+mass 1 ${mass1}                                                                         # set mass for element 1
+mass 2 ${mass2}          
+
+group h type 1
+group o type 2
+
+### SIMULATION STARTS HERE ###
+#replicate SIZE
+
+neighbor       2.0 bin          # neighbor list skin width
+neigh_modify   every 1 delay 0 check yes # frequency to update neighor list
+
+
+pair_style hybrid/overlay nnp dir ${runnerDir} showew no showewsum 10 resetew yes maxew 100000 cflength 1.8897261328 cfenergy 0.0367493254 lj/cut  1.122462
+pair_coeff * * nnp ${runnerCutoff}        # set up pair style coefficients
+pair_coeff 1 1 lj/cut 1 0.35635949 0.4
+pair_coeff 1 2 lj/cut 10 0.65 0.7296033
+pair_coeff 2 2 lj/cut 100 1.0 1.122462
+# ratio between rcut/sigma = (2)^(1/6) = 1.122462
+
+timestep ${dt}                                                                          # set timestep
+velocity all create ${initTemp} ${velSeed}                                              # create initial velocities
+thermo ${intThermo}                                                                     # set screen output
+thermo_style custom step time temp pe etotal press vol lx ly lz
+thermo_modify format 4 %20.15g
+
+################### relax geometry #######################
+#min_style cg
+#minimize 1e-4 1e-3 10 10
+###########################################################
+#
+#
+################### relax box  #######################
+#fix 1 all box/relax iso ${startPress} vmax 0.05
+#min_style sd
+#minimize 1e-4 1e-3 100 100
+#unfix 1
+###########################################################
+
+#write_data relaxed-P-PRESSURE.data
+
+replicate 2 2 2
+
+###############################################################################
+# SIMULATION
+###############################################################################
+fix 1 all npt temp ${startTemp} ${stopTemp} ${tDamp} iso ${startPress} ${stopPress} ${pDamp}
+
+run 10000
+
+compute 1 h msd com yes
+compute 2 o msd com yes
+
+variable t equal time
+variable xh equal c_1[1]
+variable xo equal c_2[1]
+variable yh equal c_1[2]
+variable yo equal c_2[2]
+variable zh equal c_1[3]
+variable zo equal c_2[3]
+variable dh equal c_1[4]
+variable do equal c_2[4]
+
+fix msd all print 100 "$t ${xh} ${yh} ${zh} ${dh} ${xo} ${yo} ${zo} ${do}" file PREFIX-T-TEMPERATURE-P-PRESSURE.msd
+
+dump            traj_xyz all custom 1000 PREFIX-T-TEMPERATURE-P-PRESSURE.lammpstrj element x y z
+dump_modify     traj_xyz element H O sort id
+
+run ${numSteps}

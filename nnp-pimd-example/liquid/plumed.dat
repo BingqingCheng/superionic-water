@@ -1,0 +1,26 @@
+UNITS LENGTH=A TIME=ps
+
+# these params are for T=2500K, P=100GPa
+Q6 ...
+LABEL=q6
+SPECIES=1-192:3 SWITCH={CUBIC D_0=2.9 D_MAX=3.2}
+MEAN
+LOWMEM
+... Q6
+
+LOCAL_AVERAGE ...
+LABEL=m6
+SPECIES=q6
+SWITCH={CUBIC D_0=2.9 D_MAX=3.2}
+MEAN
+MORE_THAN1={SMAP R_0=0.04 D_0=0.23 A=8 B=8}
+LOWMEM
+... LOCAL_AVERAGE
+
+wall: UPPER_WALLS ARG=m6.morethan-1 AT=2 KAPPA=0.2
+
+# monitor the two variables and the metadynamics bias potential
+#PRINT STRIDE=10 ARG=m6.*,wall.bias  FILE=COLVAR
+
+ENDPLUMED
+

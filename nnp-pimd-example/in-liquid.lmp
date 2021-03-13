@@ -1,0 +1,39 @@
+###############################################################################
+# MD simulation for revPBE0-D3 H2O with NN potential
+###############################################################################
+
+###############################################################################
+# VARIABLES
+###############################################################################
+clear
+variable dt              equal  0.0005                                                   # timestep (ps)
+variable intThermo       equal  100                                                       # screen output interval (timesteps)
+variable numSteps        equal  1000000                                                    # total number of simulation timesteps (timesteps)
+variable runnerCutoff    equal  6.3501269880                                            # largest symmetry function cutoff (Angstrom)
+variable mass2           equal  15.9994                                                 # mass for element 1 (O)  (g/mol)
+variable mass1           equal  1.0080                                                  # mass for element 2 (H) (g/mol)
+variable nameStartCfg    string "PREFIX.data"                				# name of the starting configuration file
+variable runnerDir       string "../nnp/" #"../production-nnp-1/results-3/t-1/"	                        # directory containing RuNNer files
+# dump thermodynamic properties (temperature, pressure, potential energy, kinetic energy, integrator quantity)
+variable intTD           equal  10000                                                      # thermodynamics dump file interval (timesteps)
+###############################################################################
+# SETUP
+###############################################################################
+units metal                                                                             # define unit system (metal = Angstrom, eV, ps, g/mol)
+boundary p p p                                                                          # set periodic boundary conditions
+atom_style atomic                                                                       # set atomic style for particles
+read_data ${nameStartCfg}                                                               # read start configuration
+mass 1 ${mass1}                                                                         # set mass for element 1
+mass 2 ${mass2}                                                                         # set mass for element 2
+pair_style nnp dir ${runnerDir} showew no showewsum 1000 resetew yes  maxew 100000 cflength 1.8897261328 cfenergy 0.0367493254                        # set up pair style runner
+pair_coeff * * ${runnerCutoff}                                                          # set up pair style coefficients
+timestep ${dt}                                                                          # set timestep
+thermo ${intThermo}                                                                     # set screen output
+###############################################################################
+# SIMULATION
+###############################################################################
+
+fix             2 all plumed   plumedfile  plumed.dat     outfile p-TEMPERATURE-PRESSURE-RANDOM.log
+fix 1 all ipi  PREFIX_T-TEMPERATURE-P-PRESSURE-M-MASS 32346 unix
+
+run 10000000

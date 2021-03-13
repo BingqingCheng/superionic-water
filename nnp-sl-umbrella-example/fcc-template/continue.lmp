@@ -1,0 +1,72 @@
+###############################################################################
+# MD simulation for revPBE0-D3 H2O with NN potential
+###############################################################################
+
+###############################################################################
+# VARIABLES
+###############################################################################
+clear
+variable dt              equal  0.00025                                                   # timestep (ps)
+variable intThermo       equal  10                                                       # screen output interval (timesteps)
+variable numSteps        equal  100000                                                    # total number of simulation timesteps (timesteps)
+variable runnerCutoff    equal  6.3501269880                                            # largest symmetry function cutoff (Angstrom)
+variable mass2           equal  15.9994                                                 # mass for element 1 (O)  (g/mol)
+variable mass1           equal  1.0080                                                  # mass for element 2 (H) (g/mol)
+variable nameStartCfg    string "equal-sl-P-PRESSURE.data"                				# name of the starting configuration file
+variable runnerDir       string "../../production-nnp-1/results-3/t-1/"	                        # directory containing RuNNer files
+
+# set initial velocity distribution
+variable initTemp        equal  TEMPERATURE                                                   # initial temperature (K)
+variable velSeed         equal  44RANDOM59                                                 # seed for random number generator
+# NVT integrator (Nose-Hoover)
+variable startTemp       equal  TEMPERATURE                                                   # starting temperature for thermostat (K)
+variable stopTemp        equal  TEMPERATURE                                                   # final temperature for thermostat (K)
+variable tDamp           equal  0.01                                                    # thermostat damping factor (ps)
+# NPT integrator (Nose-Hoover)
+variable startPress       equal  10000*PRESSURE                                                  # starting pressure for barostat (bar)
+variable stopPress        equal  10000*PRESSURE                                                   # final pressure for barostat (bar)
+variable pDamp           equal  0.05                                                    # thermostat damping factor (ps)
+###############################################################################
+# SETUP
+###############################################################################
+units metal                                                                             # define unit system (metal = Angstrom, eV, ps, g/mol)
+boundary p p p                                                                          # set periodic boundary conditions
+atom_style atomic
+#box tilt large                                                                       # set atomic style for particles
+read_data ${nameStartCfg}                                                               # read start configuration
+#change_box all triclinic
+mass 1 ${mass1}                                                                         # set mass for element 1
+mass 2 ${mass2}          
+
+neighbor       2.0 bin          # neighbor list skin width
+neigh_modify   every 1 delay 0 check yes # frequency to update neighor list
+
+
+pair_style hybrid/overlay nnp dir ${runnerDir} showew no showewsum 10 resetew yes maxew 100000 cflength 1.8897261328 cfenergy 0.0367493254 lj/cut  1.122462
+pair_coeff * * nnp ${runnerCutoff}        # set up pair style coefficients
+pair_coeff 1 1 lj/cut 1 0.35635949 0.4
+pair_coeff 1 2 lj/cut 10 0.65 0.7296033
+pair_coeff 2 2 lj/cut 100 1.0 1.122462
+# ratio between rcut/sigma = (2)^(1/6) = 1.122462
+
+timestep ${dt}                                                                          # set timestep
+velocity all create ${initTemp} ${velSeed}                                              # create initial velocities
+thermo ${intThermo}                                                                     # set screen output
+thermo_style custom step time temp pe etotal press vol lx ly lz
+thermo_modify format 4 %20.15g
+
+change_box all x final 0.0 BOXSIZE  y final 0.0 BOXSIZE remap units box
+
+###############################################################################
+# SIMULATION
+###############################################################################
+
+fix             2 all plumed   plumedfile  plumed.dat     outfile p.log
+
+fix 1 all npt temp ${startTemp} ${stopTemp} ${tDamp} z ${startPress} ${stopPress} ${pDamp}
+dump            traj_xyz all custom 1000 fcc-sl-T-TEMPERATURE-P-PRESSURE.lammpstrj element x y z
+dump_modify     traj_xyz element H O sort id
+
+run ${numSteps}
+
+write_data final-sl-T-TEMPERATURE-P-PRESSURE.data
