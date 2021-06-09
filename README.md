@@ -26,3 +26,6 @@ nnp-sl-umbrella-example: LAMMPS + PLUMED input for running umbrella sampling sim
 nnp: specifications of the neural-network potential for high-pressure water based on PBE DFT. Competitable with N2P2 or RuNNer.
 
 training-set: training set of the MLP, N2P2/RuNNer format. In atomic units (Hartree/bohr).
+
+## Sample structures
+superionic-water-examplestructures: xyz of fcc/bcc/hcp/mixed superionic phases.
