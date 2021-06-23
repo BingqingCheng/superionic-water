@@ -16,6 +16,8 @@ chemical-potential: tabulated chemical potentials for the superionic phases (bcc
 
 ## Input files
 
+vasp-pbe-example: example VASP input files for PBE DFT calculations.
+
 nnp-md-example: LAMMPS input for molecular dynamics simulations.
 
 nnp-pimd-example: i-PI + LAMMPS input for path-integral molecular dynamics simulations.
