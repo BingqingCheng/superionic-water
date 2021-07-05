@@ -47,13 +47,17 @@ group o type 2
 neighbor       2.0 bin          # neighbor list skin width
 neigh_modify   every 1 delay 0 check yes # frequency to update neighor list
 
+pair_style nnp dir ${runnerDir} showew no showewsum 1000 resetew yes  maxew 10000 cflength 1.8897261328 cfenergy 0.0367493254                        # set up pair style runner
+pair_coeff * * ${runnerCutoff}                                                          # set up pair style coefficients
 
-pair_style hybrid/overlay nnp dir ${runnerDir} showew no showewsum 10 resetew yes maxew 100000 cflength 1.8897261328 cfenergy 0.0367493254 lj/cut  1.122462
-pair_coeff * * nnp ${runnerCutoff}        # set up pair style coefficients
-pair_coeff 1 1 lj/cut 1 0.35635949 0.4
-pair_coeff 1 2 lj/cut 10 0.65 0.7296033
-pair_coeff 2 2 lj/cut 100 1.0 1.122462
+# put a hard repulsive potential underneath
+#pair_style hybrid/overlay nnp dir ${runnerDir} showew no showewsum 10 resetew yes maxew 100000 cflength 1.8897261328 cfenergy 0.0367493254 lj/cut  1.122462
+#pair_coeff * * nnp ${runnerCutoff}        # set up pair style coefficients
+#pair_coeff 1 1 lj/cut 1 0.35635949 0.4
+#pair_coeff 1 2 lj/cut 10 0.65 0.7296033
+#pair_coeff 2 2 lj/cut 100 1.0 1.122462
 # ratio between rcut/sigma = (2)^(1/6) = 1.122462
+
 
 timestep ${dt}                                                                          # set timestep
 velocity all create ${initTemp} ${velSeed}                                              # create initial velocities
